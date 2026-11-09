@@ -117,6 +117,8 @@ dd small { font-size: 14px; color: var(--muted); font-family: var(--font-body); 
     <span class="eyebrow">AR product demo</span>
     <h1>Sofa AR Demo</h1>
     <p class="sub">Turn the sofa, pick a fabric, then place it at true size in your own room.</p>
+    <div class="btnrow"><button class="btn primary" type="button" id="ar2">View in your space (true size)</button></div>
+    <p class="note" id="arhelp">Tap the button, then move the phone slowly over the floor until the surface is found. Tap to place the sofa. It appears at 200 × 90 × 86 cm, and you can walk around it.</p>
   </header>
 
   <section class="stage" aria-label="3D sofa viewer">
@@ -124,7 +126,7 @@ dd small { font-size: 14px; color: var(--muted); font-family: var(--font-body); 
       camera-controls touch-action="pan-y" auto-rotate rotation-per-second="14deg"
       camera-orbit="35deg 72deg auto" min-camera-orbit="auto 20deg auto" max-camera-orbit="auto 90deg auto"
       shadow-intensity="1.1" shadow-softness="0.9" exposure="1.05" environment-image="neutral"
-      ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" ar-placement="floor">
+      ar ar-modes="scene-viewer webxr quick-look" ar-scale="fixed" ar-placement="floor">
       <button slot="ar-button" class="ar-btn" type="button">View in your space</button>
     </model-viewer>
     <span class="hint">Drag to rotate · pinch to zoom</span>
@@ -212,7 +214,9 @@ dd small { font-size: 14px; color: var(--muted); font-family: var(--font-body); 
     var bin = atob(GLB_B64), bytes = new Uint8Array(bin.length);
     for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
     var glbUrl = URL.createObjectURL(new Blob([bytes], { type: "model/gltf-binary" }));
-    mv.src = glbUrl;
+    mv.src = "sofa.glb";
+    var triedBlob = false;
+    mv.addEventListener("error", function () { if (!triedBlob) { triedBlob = true; mv.src = glbUrl; } });
     mv2.src = glbUrl;
   } catch (err) {
     status.textContent = "The 3D model could not be prepared. Reload the page to try again.";
@@ -428,6 +432,15 @@ dd small { font-size: 14px; color: var(--muted); font-family: var(--font-body); 
         }
       }, 2500);
     });
+  });
+
+  document.getElementById("ar2").addEventListener("click", function () {
+    if (mv.canActivateAR) {
+      mv.activateAR();
+    } else {
+      status.textContent = "Real-size AR needs a phone with AR support: Chrome on Android with Google Play Services for AR, or Safari on iPhone.";
+      document.getElementById("arhelp").textContent = "Real-size AR is not available on this device. Try Chrome on an Android phone that supports ARCore, or Safari on an iPhone.";
+    }
   });
 })();
 </script>
