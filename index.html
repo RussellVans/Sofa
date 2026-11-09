@@ -1,0 +1,338 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style><title>Sofa Live Camera Demo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one centred column. 3D viewer first, then colour choice, real size, and the AR action. */
+:root {
+  --bg: #eef1f0;
+  --surface: #ffffff;
+  --stage: #dfe5e3;
+  --fg: #16201f;
+  --muted: #5b6a68;
+  --line: #cfd8d6;
+  --accent: #1f5f5b;
+  --accent-fg: #ffffff;
+  --ok: #2a7a4b;
+  --font-display: "Bricolage Grotesque", "DM Sans", system-ui, sans-serif;
+  --font-body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111716;
+    --surface: #1a2221;
+    --stage: #222c2b;
+    --fg: #e6eeec;
+    --muted: #9aaba8;
+    --line: #2f3c3a;
+    --accent: #5fb3ac;
+    --accent-fg: #0c1514;
+    --ok: #6cc28d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111716;
+  --surface: #1a2221;
+  --stage: #222c2b;
+  --fg: #e6eeec;
+  --muted: #9aaba8;
+  --line: #2f3c3a;
+  --accent: #5fb3ac;
+  --accent-fg: #0c1514;
+  --ok: #6cc28d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 720px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: grid; gap: 4px; }
+.eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+h1 { font-family: var(--font-display); font-size: clamp(28px, 6vw, 40px); line-height: 1.1; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; max-width: 60ch; }
+
+.stage { position: relative; background: var(--stage); border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+model-viewer {
+  display: block; width: 100%; height: min(62vh, 460px); min-height: 300px;
+  --poster-color: transparent; background: transparent;
+}
+.hint { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); pointer-events: none; }
+.ar-btn {
+  position: absolute; right: 12px; bottom: 12px;
+  font: 600 15px var(--font-body); color: var(--accent-fg); background: var(--accent);
+  border: 0; border-radius: 10px; padding: 12px 16px; cursor: pointer; min-height: 44px;
+}
+.ar-btn:focus-visible, .sw:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 14px; }
+h2 { font-family: var(--font-display); font-size: 18px; margin: 0; }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.sw {
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px;
+  background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 999px;
+  font: 500 14px var(--font-body); cursor: pointer; min-height: 44px;
+}
+.sw i { width: 28px; height: 28px; border-radius: 50%; display: block; border: 1px solid rgba(0,0,0,.2); }
+.sw[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 0; }
+dl div { border-top: 2px solid var(--accent); padding-top: 6px; }
+dt { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+dd { margin: 0; font-family: var(--font-display); font-size: 24px; font-variant-numeric: tabular-nums; }
+dd small { font-size: 14px; color: var(--muted); font-family: var(--font-body); }
+
+.status { margin: 0; font-size: 14px; color: var(--muted); }
+.status b { color: var(--ok); }
+.note { margin: 0; font-size: 13px; color: var(--muted); max-width: 70ch; }
+
+.btnrow { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn { font: 600 15px var(--font-body); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; min-height: 44px; cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+.empty { padding: 28px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; margin: 0; }
+.room { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--stage); user-select: none; -webkit-user-select: none; }
+.room img { display: block; width: 100%; height: auto; }
+.ov { position: absolute; aspect-ratio: 10 / 7; transform: translate(-50%, -85%); cursor: grab; touch-action: none; border-radius: 8px; }
+.ov:hover, .ov.drag { outline: 1px dashed var(--accent); cursor: grabbing; }
+.ov model-viewer { width: 100%; height: 100%; min-height: 0; pointer-events: none; }
+.ctls { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.ctl { display: grid; gap: 4px; min-width: 0; }
+.ctl label { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+.ctl input[type=range] { width: 100%; accent-color: var(--accent); min-height: 32px; }
+.room video { display: block; width: 100%; height: auto; min-height: 240px; background: #000; }
+</style>
+
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+
+<main>
+  <header>
+    <span class="eyebrow">AR product demo</span>
+    <h1>Sofa AR Demo</h1>
+    <p class="sub">Turn the sofa, pick a fabric, then place it at true size in your own room.</p>
+  </header>
+
+  <section class="stage" aria-label="3D sofa viewer">
+    <model-viewer id="mv" alt="Two-seater sofa in 3D"
+      camera-controls touch-action="pan-y" auto-rotate rotation-per-second="14deg"
+      camera-orbit="35deg 72deg auto" min-camera-orbit="auto 20deg auto" max-camera-orbit="auto 90deg auto"
+      shadow-intensity="1.1" shadow-softness="0.9" exposure="1.05" environment-image="neutral"
+      ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" ar-placement="floor">
+      <button slot="ar-button" class="ar-btn" type="button">View in your space</button>
+    </model-viewer>
+    <span class="hint">Drag to rotate · pinch to zoom</span>
+  </section>
+
+  <section class="panel" aria-labelledby="fabric-h">
+    <h2 id="fabric-h">Fabric</h2>
+    <div class="swatches" id="swatches" role="group" aria-label="Fabric colour"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="room-h">
+    <h2 id="room-h">Fit it in your room</h2>
+    <div class="btnrow">
+      <button class="btn primary" type="button" id="live">Start live camera</button>
+      <button class="btn" type="button" id="take">Take a photo</button>
+      <button class="btn" type="button" id="pick">Choose a photo</button>
+    </div>
+    <input id="photo-cam" type="file" accept="image/*" capture="environment" hidden>
+    <input id="photo-pick" type="file" accept="image/*" hidden>
+    <p class="empty" id="roomempty">Start the live camera and point it at the spot where the sofa would go. Drag the sofa into place, then use the sliders for size and turn.</p>
+    <div class="room" id="room" hidden>
+      <img id="roomimg" alt="Your room" hidden>
+      <video id="roomvid" autoplay playsinline muted hidden></video>
+      <div class="ov" id="ov" aria-label="Sofa. Drag to move it.">
+        <model-viewer id="mv2" alt="Sofa placed on your room photo"
+          camera-orbit="0deg 78deg auto" field-of-view="28deg" interaction-prompt="none"
+          shadow-intensity="0.8" shadow-softness="1" exposure="1.05" environment-image="neutral"></model-viewer>
+      </div>
+    </div>
+    <div class="ctls" id="roomctls" hidden>
+      <div class="ctl"><label for="sz">Size</label><input id="sz" type="range" min="25" max="95" value="55"></div>
+      <div class="ctl"><label for="rt">Turn</label><input id="rt" type="range" min="-180" max="180" value="0"></div>
+    </div>
+    <p class="note">The sofa sits on top of the live camera picture and stays where you put it on the screen, so hold the phone steady. Size is approximate. For a sofa that stays fixed on the floor at true size while you walk around it, use View in your space above.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="size-h">
+    <h2 id="size-h">Real size</h2>
+    <dl>
+      <div><dt>Width</dt><dd>200 <small>cm</small></dd></div>
+      <div><dt>Depth</dt><dd>90 <small>cm</small></dd></div>
+      <div><dt>Height</dt><dd>85 <small>cm</small></dd></div>
+      <div><dt>Seat height</dt><dd>44 <small>cm</small></dd></div>
+    </dl>
+    <p class="status" id="status">Checking AR support on this device…</p>
+    <p class="note">This is a placeholder sofa built from simple shapes. A real catalogue item uses a scanned or modelled file of the actual product, in the same viewer.</p>
+  </section>
+</main>
+
+<script>
+(function () {
+  var GLB_B64 = "Z2xURgIAAAAEJwAAiAgAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOiIyLjAiLCJnZW5lcmF0b3IiOiJzb2ZhLWRlbW8ifSwic2NlbmUiOjAsInNjZW5lcyI6W3sibm9kZXMiOlswXX1dLCJub2RlcyI6W3sibWVzaCI6MCwibmFtZSI6InNvZmEifV0sIm1lc2hlcyI6W3sibmFtZSI6InNvZmEiLCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjowLCJOT1JNQUwiOjF9LCJpbmRpY2VzIjoyLCJtYXRlcmlhbCI6MH0seyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjozLCJOT1JNQUwiOjR9LCJpbmRpY2VzIjo1LCJtYXRlcmlhbCI6MX0seyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjo2LCJOT1JNQUwiOjd9LCJpbmRpY2VzIjo4LCJtYXRlcmlhbCI6Mn1dfV0sIm1hdGVyaWFscyI6W3sibmFtZSI6ImZhYnJpYyIsInBick1ldGFsbGljUm91Z2huZXNzIjp7ImJhc2VDb2xvckZhY3RvciI6WzAuMDQzNzQsMC4wNjg0OCwwLjE0NzAzLDEuMF0sIm1ldGFsbGljRmFjdG9yIjowLjAsInJvdWdobmVzc0ZhY3RvciI6MC45NX19LHsibmFtZSI6ImN1c2hpb24iLCJwYnJNZXRhbGxpY1JvdWdobmVzcyI6eyJiYXNlQ29sb3JGYWN0b3IiOlswLjA2ODQ4LDAuMTA0NjIsMC4yMTU4NiwxLjBdLCJtZXRhbGxpY0ZhY3RvciI6MC4wLCJyb3VnaG5lc3NGYWN0b3IiOjAuOTV9fSx7Im5hbWUiOiJ3b29kIiwicGJyTWV0YWxsaWNSb3VnaG5lc3MiOnsiYmFzZUNvbG9yRmFjdG9yIjpbMC4xMDIyNCwwLjA0NjY3LDAuMDIxMjIsMS4wXSwibWV0YWxsaWNGYWN0b3IiOjAuMCwicm91Z2huZXNzRmFjdG9yIjowLjZ9fV0sImFjY2Vzc29ycyI6W3siYnVmZmVyVmlldyI6MCwiY29tcG9uZW50VHlwZSI6NTEyNiwiY291bnQiOjk2LCJ0eXBlIjoiVkVDMyIsIm1pbiI6Wy0xLjAsMC4xMiwtMC40NV0sIm1heCI6WzEuMCwwLjg1LDAuNDVdfSx7ImJ1ZmZlclZpZXciOjEsImNvbXBvbmVudFR5cGUiOjUxMjYsImNvdW50Ijo5NiwidHlwZSI6IlZFQzMifSx7ImJ1ZmZlclZpZXciOjIsImNvbXBvbmVudFR5cGUiOjUxMjMsImNvdW50IjoxNDQsInR5cGUiOiJTQ0FMQVIifSx7ImJ1ZmZlclZpZXciOjMsImNvbXBvbmVudFR5cGUiOjUxMjYsImNvdW50Ijo5NiwidHlwZSI6IlZFQzMiLCJtaW4iOlstMC43OTUsMC4zLC0wLjI4MTg2NjMwNDkwNjA1OTVdLCJtYXgiOlswLjc5NSwwLjg3OTkyOTMwODcyODE5NzQsMC4zOF19LHsiYnVmZmVyVmlldyI6NCwiY29tcG9uZW50VHlwZSI6NTEyNiwiY291bnQiOjk2LCJ0eXBlIjoiVkVDMyJ9LHsiYnVmZmVyVmlldyI6NSwiY29tcG9uZW50VHlwZSI6NTEyMywiY291bnQiOjE0NCwidHlwZSI6IlNDQUxBUiJ9LHsiYnVmZmVyVmlldyI6NiwiY29tcG9uZW50VHlwZSI6NTEyNiwiY291bnQiOjk2LCJ0eXBlIjoiVkVDMyIsIm1pbiI6Wy0wLjk1MDAwMDAwMDAwMDAwMDEsMC4wLC0wLjRdLCJtYXgiOlswLjk1MDAwMDAwMDAwMDAwMDEsMC4xMiwwLjRdfSx7ImJ1ZmZlclZpZXciOjcsImNvbXBvbmVudFR5cGUiOjUxMjYsImNvdW50Ijo5NiwidHlwZSI6IlZFQzMifSx7ImJ1ZmZlclZpZXciOjgsImNvbXBvbmVudFR5cGUiOjUxMjMsImNvdW50IjoxNDQsInR5cGUiOiJTQ0FMQVIifV0sImJ1ZmZlclZpZXdzIjpbeyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjAsImJ5dGVMZW5ndGgiOjExNTIsInRhcmdldCI6MzQ5NjJ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoxMTUyLCJieXRlTGVuZ3RoIjoxMTUyLCJ0YXJnZXQiOjM0OTYyfSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MjMwNCwiYnl0ZUxlbmd0aCI6Mjg4LCJ0YXJnZXQiOjM0OTYzfSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MjU5MiwiYnl0ZUxlbmd0aCI6MTE1MiwidGFyZ2V0IjozNDk2Mn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjM3NDQsImJ5dGVMZW5ndGgiOjExNTIsInRhcmdldCI6MzQ5NjJ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo0ODk2LCJieXRlTGVuZ3RoIjoyODgsInRhcmdldCI6MzQ5NjN9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo1MTg0LCJieXRlTGVuZ3RoIjoxMTUyLCJ0YXJnZXQiOjM0OTYyfSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6NjMzNiwiYnl0ZUxlbmd0aCI6MTE1MiwidGFyZ2V0IjozNDk2Mn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjc0ODgsImJ5dGVMZW5ndGgiOjI4OCwidGFyZ2V0IjozNDk2M31dLCJidWZmZXJzIjpbeyJieXRlTGVuZ3RoIjo3Nzc2fV19ICBgHgAAQklOAAAAgL+PwvU9ZmbmPgAAgD+PwvU9ZmbmPgAAgD+amZk+ZmbmPgAAgL+amZk+ZmbmPgAAgD+PwvU9ZmbmvgAAgL+PwvU9ZmbmvgAAgL+amZk+ZmbmvgAAgD+amZk+ZmbmvgAAgD+PwvU9ZmbmPgAAgD+PwvU9ZmbmvgAAgD+amZk+ZmbmvgAAgD+amZk+ZmbmPgAAgL+PwvU9ZmbmvgAAgL+PwvU9ZmbmPgAAgL+amZk+ZmbmPgAAgL+amZk+ZmbmvgAAgL+amZk+ZmbmPgAAgD+amZk+ZmbmPgAAgD+amZk+ZmbmvgAAgL+amZk+ZmbmvgAAgL+PwvU9ZmbmvgAAgD+PwvU9ZmbmvgAAgD+PwvU9ZmbmPgAAgL+PwvU9ZmbmPgAAgL+PwvU9ZmbmPs3MTL+PwvU9ZmbmPs3MTL9SuB4/ZmbmPgAAgL9SuB4/ZmbmPs3MTL+PwvU9ZmbmvgAAgL+PwvU9ZmbmvgAAgL9SuB4/Zmbmvs3MTL9SuB4/Zmbmvs3MTL+PwvU9ZmbmPs3MTL+PwvU9Zmbmvs3MTL9SuB4/Zmbmvs3MTL9SuB4/ZmbmPgAAgL+PwvU9ZmbmvgAAgL+PwvU9ZmbmPgAAgL9SuB4/ZmbmPgAAgL9SuB4/ZmbmvgAAgL9SuB4/ZmbmPs3MTL9SuB4/ZmbmPs3MTL9SuB4/ZmbmvgAAgL9SuB4/ZmbmvgAAgL+PwvU9Zmbmvs3MTL+PwvU9Zmbmvs3MTL+PwvU9ZmbmPgAAgL+PwvU9ZmbmPs3MTD+PwvU9ZmbmPgAAgD+PwvU9ZmbmPgAAgD9SuB4/ZmbmPs3MTD9SuB4/ZmbmPgAAgD+PwvU9Zmbmvs3MTD+PwvU9Zmbmvs3MTD9SuB4/ZmbmvgAAgD9SuB4/ZmbmvgAAgD+PwvU9ZmbmPgAAgD+PwvU9ZmbmvgAAgD9SuB4/ZmbmvgAAgD9SuB4/ZmbmPs3MTD+PwvU9Zmbmvs3MTD+PwvU9ZmbmPs3MTD9SuB4/ZmbmPs3MTD9SuB4/Zmbmvs3MTD9SuB4/ZmbmPgAAgD9SuB4/ZmbmPgAAgD9SuB4/Zmbmvs3MTD9SuB4/Zmbmvs3MTD+PwvU9ZmbmvgAAgD+PwvU9ZmbmvgAAgD+PwvU9ZmbmPs3MTD+PwvU9ZmbmPs3MTL+amZk+H4Vrvs3MTD+amZk+H4Vrvs3MTD+amVk/H4Vrvs3MTL+amVk/H4Vrvs3MTD+amZk+Zmbmvs3MTL+amZk+Zmbmvs3MTL+amVk/Zmbmvs3MTD+amVk/Zmbmvs3MTD+amZk+H4Vrvs3MTD+amZk+Zmbmvs3MTD+amVk/Zmbmvs3MTD+amVk/H4Vrvs3MTL+amZk+Zmbmvs3MTL+amZk+H4Vrvs3MTL+amVk/H4Vrvs3MTL+amVk/Zmbmvs3MTL+amVk/H4Vrvs3MTD+amVk/H4Vrvs3MTD+amVk/Zmbmvs3MTL+amVk/Zmbmvs3MTL+amZk+Zmbmvs3MTD+amZk+Zmbmvs3MTD+amZk+H4Vrvs3MTL+amZk+H4VrvgAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/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Jdl8vwAAAABbMCC+Jdl8vwAAAABbMCC+Jdl8vwAAAABbMCC+Jdl8vwAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAAAAl2Xw/WzAgvgAAAAAl2Xw/WzAgvgAAAAAl2Xw/WzAgvgAAAAAl2Xw/WzAgvgAAAAAl2Xy/WzAgPgAAAAAl2Xy/WzAgPgAAAAAl2Xy/WzAgPgAAAAAl2Xy/WzAgPgAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAABbMCA+Jdl8PwAAAABbMCA+Jdl8PwAAAABbMCA+Jdl8PwAAAABbMCA+Jdl8PwAAAABbMCC+Jdl8vwAAAABbMCC+Jdl8vwAAAABbMCC+Jdl8vwAAAABbMCC+Jdl8vwAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAAAAl2Xw/WzAgvgAAAAAl2Xw/WzAgvgAAAAAl2Xw/WzAgvgAAAAAl2Xw/WzAgvgAAAAAl2Xy/WzAgPgAAAAAl2Xy/WzAgPgAAAAAl2Xy/WzAgPgAAAAAl2Xy/WzAgPgAAAQACAAAAAgADAAQABQAGAAQABgAHAAgACQAKAAgACgALAAwADQAOAAwADgAPABAAEQASABAAEgATABQAFQAWABQAFgAXABgAGQAaABgAGgAbABwAHQAeABwAHgAfACAAIQAiACAAIgAjACQAJQAmACQAJgAnACgAKQAqACgAKgArACwALQAuACwALgAvADAAMQAyADAAMgAzADQANQA2ADQANgA3ADgAOQA6ADgAOgA7ADwAPQA+ADwAPgA/AEAAQQBCAEAAQgBDAEQARQBGAEQARgBHAEgASQBKAEgASgBLAEwATQBOAEwATgBPAFAAUQBSAFAAUgBTAFQAVQBWAFQAVgBXAFgAWQBaAFgAWgBbAFwAXQBeAFwAXgBfADMzc78AAAAAexSuvgrXY78AAAAAexSuvgrXY7+PwvU9exSuvjMzc7+PwvU9exSuvgrXY78AAAAAzczMvjMzc78AAAAAzczMvjMzc7+PwvU9zczMvgrXY7+PwvU9zczMvgrXY78AAAAAexSuvgrXY78AAAAAzczMvgrXY7+PwvU9zczMvgrXY7+PwvU9exSuvjMzc78AAAAAzczMvjMzc78AAAAAexSuvjMzc7+PwvU9exSuvjMzc7+PwvU9zczMvjMzc7+PwvU9exSuvgrXY7+PwvU9exSuvgrXY7+PwvU9zczMvjMzc7+PwvU9zczMvjMzc78AAAAAzczMvgrXY78AAAAAzczMvgrXY78AAAAAexSuvjMzc78AAAAAexSuvjMzc78AAAAAzczMPgrXY78AAAAAzczMPgrXY7+PwvU9zczMPjMzc7+PwvU9zczMPgrXY78AAAAAexSuPjMzc78AAAAAexSuPjMzc7+PwvU9exSuPgrXY7+PwvU9exSuPgrXY78AAAAAzczMPgrXY78AAAAAexSuPgrXY7+PwvU9exSuPgrXY7+PwvU9zczMPjMzc78AAAAAexSuPjMzc78AAAAAzczMPjMzc7+PwvU9zczMPjMzc7+PwvU9exSuPjMzc7+PwvU9zczMPgrXY7+PwvU9zczMPgrXY7+PwvU9exSuPjMzc7+PwvU9exSuPjMzc78AAAAAexSuPgrXY78AAAAAexSuPgrXY78AAAAAzczMPjMzc78AAAAAzczMPgrXYz8AAAAAexSuvjMzcz8AAAAAexSuvjMzcz+PwvU9exSuvgrXYz+PwvU9exSuvjMzcz8AAAAAzczMvgrXYz8AAAAAzczMvgrXYz+PwvU9zczMvjMzcz+PwvU9zczMvjMzcz8AAAAAexSuvjMzcz8AAAAAzczMvjMzcz+PwvU9zczMvjMzcz+PwvU9exSuvgrXYz8AAAAAzczMvgrXYz8AAAAAexSuvgrXYz+PwvU9exSuvgrXYz+PwvU9zczMvgrXYz+PwvU9exSuvjMzcz+PwvU9exSuvjMzcz+PwvU9zczMvgrXYz+PwvU9zczMvgrXYz8AAAAAzczMvjMzcz8AAAAAzczMvjMzcz8AAAAAexSuvgrXYz8AAAAAexSuvgrXYz8AAAAAzczMPjMzcz8AAAAAzczMPjMzcz+PwvU9zczMPgrXYz+PwvU9zczMPjMzcz8AAAAAexSuPgrXYz8AAAAAexSuPgrXYz+PwvU9exSuPjMzcz+PwvU9exSuPjMzcz8AAAAAzczMPjMzcz8AAAAAexSuPjMzcz+PwvU9exSuPjMzcz+PwvU9zczMPgrXYz8AAAAAexSuPgrXYz8AAAAAzczMPgrXYz+PwvU9zczMPgrXYz+PwvU9exSuPgrXYz+PwvU9zczMPjMzcz+PwvU9zczMPjMzcz+PwvU9exSuPgrXYz+PwvU9exSuPgrXYz8AAAAAexSuPjMzcz8AAAAAexSuPjMzcz8AAAAAzczMPgrXYz8AAAAAzczMPgAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAAAAAAAAAAACAvwAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAgL8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAQACAAAAAgADAAQABQAGAAQABgAHAAgACQAKAAgACgALAAwADQAOAAwADgAPABAAEQASABAAEgATABQAFQAWABQAFgAXABgAGQAaABgAGgAbABwAHQAeABwAHgAfACAAIQAiACAAIgAjACQAJQAmACQAJgAnACgAKQAqACgAKgArACwALQAuACwALgAvADAAMQAyADAAMgAzADQANQA2ADQANgA3ADgAOQA6ADgAOgA7ADwAPQA+ADwAPgA/AEAAQQBCAEAAQgBDAEQARQBGAEQARgBHAEgASQBKAEgASgBLAEwATQBOAEwATgBPAFAAUQBSAFAAUgBTAFQAVQBWAFQAVgBXAFgAWQBaAFgAWgBbAFwAXQBeAFwAXgBfAA==";
+  var FABRICS = [
+    { name: "Indigo", hex: "#3b4a6b" },
+    { name: "Moss", hex: "#56653f" },
+    { name: "Rust", hex: "#9a4a2c" },
+    { name: "Charcoal", hex: "#3a3d40" },
+    { name: "Sand", hex: "#b9a98a" }
+  ];
+  var mv = document.getElementById("mv");
+  var mv2 = document.getElementById("mv2");
+  var box = document.getElementById("swatches");
+  var status = document.getElementById("status");
+
+  function toLinear(c) { c = c / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function rgb(hex) { return [1, 3, 5].map(function (i) { return parseInt(hex.substr(i, 2), 16); }); }
+  function lighten(c, t) { return c.map(function (v) { return Math.min(255, Math.round(v + (255 - v) * t)); }); }
+  function factor(c) { return [toLinear(c[0]), toLinear(c[1]), toLinear(c[2]), 1]; }
+
+  function apply(hex) {
+    var base = rgb(hex);
+    [mv, mv2].forEach(function (v) {
+      if (!v.model) return;
+      v.model.materials.forEach(function (m) {
+        if (m.name === "fabric") m.pbrMetallicRoughness.setBaseColorFactor(factor(base));
+        if (m.name === "cushion") m.pbrMetallicRoughness.setBaseColorFactor(factor(lighten(base, 0.12)));
+      });
+    });
+  }
+
+  try {
+    var bin = atob(GLB_B64), bytes = new Uint8Array(bin.length);
+    for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    var glbUrl = URL.createObjectURL(new Blob([bytes], { type: "model/gltf-binary" }));
+    mv.src = glbUrl;
+    mv2.src = glbUrl;
+  } catch (err) {
+    status.textContent = "The 3D model could not be prepared. Reload the page to try again.";
+  }
+
+  var current = FABRICS[0].hex;
+  FABRICS.forEach(function (f, i) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "sw";
+    b.id = "sw-" + i;
+    b.setAttribute("aria-pressed", i === 0 ? "true" : "false");
+    b.innerHTML = '<i style="background:' + f.hex + '"></i>' + f.name;
+    b.addEventListener("click", function () {
+      current = f.hex;
+      box.querySelectorAll(".sw").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
+      b.setAttribute("aria-pressed", "true");
+      apply(f.hex);
+    });
+    box.appendChild(b);
+  });
+
+  mv.addEventListener("load", function () {
+    apply(current);
+    if (mv.canActivateAR) {
+      status.innerHTML = "<b>AR is available</b> on this device. Tap “View in your space”, point at the floor, and move the phone slowly.";
+    } else {
+      status.textContent = "AR needs a phone or tablet (Android with Google Play Services, or iPhone and iPad). Open this page there to place the sofa in a room.";
+    }
+  });
+  mv.addEventListener("error", function () {
+    status.textContent = "The 3D model could not be loaded. Reload the page to try again.";
+  });
+  mv.addEventListener("ar-status", function (e) {
+    if (e.detail.status === "failed") status.textContent = "AR could not start here. Try Chrome (Android) or Safari (iPhone), and make sure the page is opened over https.";
+  });
+
+  /* Room photo mode */
+  var room = document.getElementById("room");
+  var img = document.getElementById("roomimg");
+  var ov = document.getElementById("ov");
+  var empty = document.getElementById("roomempty");
+  var ctls = document.getElementById("roomctls");
+  var sz = document.getElementById("sz");
+  var rt = document.getElementById("rt");
+  var cam = document.getElementById("photo-cam");
+  var pick = document.getElementById("photo-pick");
+  var st = { x: 50, y: 82, w: 55 };
+  var roomUrl = null;
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function place() {
+    ov.style.left = st.x + "%";
+    ov.style.top = st.y + "%";
+    ov.style.width = st.w + "%";
+  }
+  function load(f) {
+    if (!f) return;
+    if (roomUrl) { try { URL.revokeObjectURL(roomUrl); } catch (e) {} }
+    roomUrl = URL.createObjectURL(f);
+    img.onload = function () {
+      empty.hidden = true; room.hidden = false; ctls.hidden = false;
+      vid.hidden = true; img.hidden = false;
+      stopCam();
+      st = { x: 50, y: 82, w: +sz.value };
+      place();
+    };
+    img.src = roomUrl;
+  }
+  document.getElementById("take").addEventListener("click", function () { cam.click(); });
+  document.getElementById("pick").addEventListener("click", function () { pick.click(); });
+  cam.addEventListener("change", function () { load(cam.files && cam.files[0]); cam.value = ""; });
+  pick.addEventListener("change", function () { load(pick.files && pick.files[0]); pick.value = ""; });
+
+  var drag = null;
+  ov.addEventListener("pointerdown", function (e) {
+    drag = { x: e.clientX, y: e.clientY, sx: st.x, sy: st.y };
+    ov.classList.add("drag");
+    try { ov.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  ov.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    var r = room.getBoundingClientRect();
+    st.x = clamp(drag.sx + (e.clientX - drag.x) / r.width * 100, 0, 100);
+    st.y = clamp(drag.sy + (e.clientY - drag.y) / r.height * 100, 15, 115);
+    place();
+  });
+  function endDrag() { drag = null; ov.classList.remove("drag"); }
+  ov.addEventListener("pointerup", endDrag);
+  ov.addEventListener("pointercancel", endDrag);
+  sz.addEventListener("input", function () { st.w = +sz.value; place(); });
+  rt.addEventListener("input", function () {
+    mv2.cameraOrbit = rt.value + "deg 78deg auto";
+    if (mv2.jumpCameraToGoal) mv2.jumpCameraToGoal();
+  });
+  mv2.addEventListener("load", function () { apply(current); });
+
+  var vid = document.getElementById("roomvid");
+  var stream = null;
+  function stopCam() {
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+  }
+  document.getElementById("live").addEventListener("click", function () {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      empty.hidden = false;
+      empty.textContent = "This browser cannot open the camera here. Open the page over https in Chrome or Safari.";
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false })
+      .then(function (s) {
+        stopCam();
+        stream = s;
+        vid.srcObject = s;
+        img.hidden = true; vid.hidden = false;
+        empty.hidden = true; room.hidden = false; ctls.hidden = false;
+        st = { x: 50, y: 82, w: +sz.value };
+        place();
+        return vid.play();
+      })
+      .catch(function () {
+        empty.hidden = false;
+        empty.textContent = "The camera could not start. Allow camera access for this site, and check the page is opened over https.";
+      });
+  });
+})();
+</script>
+</html>
