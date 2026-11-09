@@ -157,8 +157,10 @@ dd small { font-size: 14px; color: var(--muted); font-family: var(--font-body); 
     <div class="ctls" id="roomctls" hidden>
       <div class="ctl"><label for="sz">Size</label><input id="sz" type="range" min="25" max="95" value="55"></div>
       <div class="ctl"><label for="rt">Turn</label><input id="rt" type="range" min="-180" max="180" value="0"></div>
+      <div class="ctl"><label for="lock">Position</label><button class="btn primary" type="button" id="lock" hidden>Lock in place</button></div>
     </div>
-    <p class="note">The sofa sits on top of the live camera picture and stays where you put it on the screen, so hold the phone steady. Size is approximate. For a sofa that stays fixed on the floor at true size while you walk around it, use View in your space above.</p>
+    <p class="note" id="lockmsg" hidden></p>
+    <p class="note">Drag the sofa into place, then tap Lock in place so it stays on that spot when you turn the phone. Hold the phone upright and stay where you are: it follows turning, not walking, and the size is approximate. For a sofa fixed on the floor at true size while you walk around it, use View in your space above.</p>
   </section>
 
   <section class="panel" aria-labelledby="size-h">
@@ -272,6 +274,7 @@ dd small { font-size: 14px; color: var(--muted); font-family: var(--font-body); 
     img.onload = function () {
       empty.hidden = true; room.hidden = false; ctls.hidden = false;
       vid.hidden = true; img.hidden = false;
+      lock.hidden = true; unlockIt();
       stopCam();
       st = { x: 50, y: 82, w: +sz.value };
       place();
@@ -285,6 +288,7 @@ dd small { font-size: 14px; color: var(--muted); font-family: var(--font-body); 
 
   var drag = null;
   ov.addEventListener("pointerdown", function (e) {
+    if (locked) return;
     drag = { x: e.clientX, y: e.clientY, sx: st.x, sy: st.y };
     ov.classList.add("drag");
     try { ov.setPointerCapture(e.pointerId); } catch (err) {}
@@ -323,6 +327,7 @@ dd small { font-size: 14px; color: var(--muted); font-family: var(--font-body); 
         stream = s;
         vid.srcObject = s;
         img.hidden = true; vid.hidden = false;
+        lock.hidden = false;
         empty.hidden = true; room.hidden = false; ctls.hidden = false;
         st = { x: 50, y: 82, w: +sz.value };
         place();
@@ -332,6 +337,96 @@ dd small { font-size: 14px; color: var(--muted); font-family: var(--font-body); 
         empty.hidden = false;
         empty.textContent = "The camera could not start. Allow camera access for this site, and check the page is opened over https.";
       });
+  });
+
+  /* Lock in place: keep the sofa on the same spot in the room while the phone turns */
+  var lock = document.getElementById("lock");
+  var lockmsg = document.getElementById("lockmsg");
+  var locked = false, pending = false, listening = false;
+  var Rcur = null, dWorld = null, sx = 50, sy = 82;
+  var FOV = 55; /* horizontal field of view of a phone rear camera held upright, in degrees */
+  function mul(A, B) {
+    var C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) for (var k = 0; k < 3; k++) C[i][j] += A[i][k] * B[k][j];
+    return C;
+  }
+  function rotM(a, b, g) {
+    var d = Math.PI / 180; a *= d; b *= d; g *= d;
+    var ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b), cg = Math.cos(g), sg = Math.sin(g);
+    var Rz = [[ca, -sa, 0], [sa, ca, 0], [0, 0, 1]];
+    var Rx = [[1, 0, 0], [0, cb, -sb], [0, sb, cb]];
+    var Ry = [[cg, 0, sg], [0, 1, 0], [-sg, 0, cg]];
+    return mul(mul(Rz, Rx), Ry);
+  }
+  function mulv(M, v) { return [M[0][0]*v[0]+M[0][1]*v[1]+M[0][2]*v[2], M[1][0]*v[0]+M[1][1]*v[1]+M[1][2]*v[2], M[2][0]*v[0]+M[2][1]*v[1]+M[2][2]*v[2]]; }
+  function mulvT(M, v) { return [M[0][0]*v[0]+M[1][0]*v[1]+M[2][0]*v[2], M[0][1]*v[0]+M[1][1]*v[1]+M[2][1]*v[2], M[0][2]*v[0]+M[1][2]*v[1]+M[2][2]*v[2]]; }
+  function focal(W) { return (W / 2) / Math.tan(FOV * Math.PI / 360); }
+
+  function finalizeLock() {
+    var r = room.getBoundingClientRect();
+    var f = focal(r.width);
+    var u = (st.x - 50) / 100 * r.width, v = (50 - st.y) / 100 * r.height;
+    var dd = mulv(Rcur, [u, v, -f]);
+    var n = Math.sqrt(dd[0]*dd[0] + dd[1]*dd[1] + dd[2]*dd[2]);
+    dWorld = [dd[0]/n, dd[1]/n, dd[2]/n];
+    sx = st.x; sy = st.y;
+    locked = true; pending = false;
+    lock.textContent = "Unlock";
+    lockmsg.hidden = false;
+    lockmsg.textContent = "Locked. Turn the phone slowly to look around: the sofa stays on that spot.";
+  }
+  function unlockIt() {
+    locked = false; pending = false;
+    lock.textContent = "Lock in place";
+    lockmsg.hidden = true;
+    ov.style.opacity = "1";
+  }
+  function onOri(e) {
+    if (e.alpha == null || e.beta == null || e.gamma == null) return;
+    Rcur = rotM(e.alpha, e.beta, e.gamma);
+    if (pending) finalizeLock();
+    if (!locked) return;
+    var r = room.getBoundingClientRect();
+    var f = focal(r.width);
+    var d = mulvT(Rcur, dWorld);
+    if (d[2] > -0.05) { ov.style.opacity = "0"; return; }
+    var u = f * d[0] / (-d[2]), v = f * d[1] / (-d[2]);
+    var x = 50 + u / r.width * 100, y = 50 - v / r.height * 100;
+    sx = sx * 0.6 + x * 0.4; sy = sy * 0.6 + y * 0.4;
+    st.x = sx; st.y = sy;
+    ov.style.opacity = "1";
+    place();
+  }
+  function startSensors() {
+    if (listening) return Promise.resolve(true);
+    var ask = (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function")
+      ? DeviceOrientationEvent.requestPermission() : Promise.resolve("granted");
+    return ask.then(function (s) {
+      if (s !== "granted") return false;
+      window.addEventListener("deviceorientation", onOri, true);
+      listening = true;
+      return true;
+    }).catch(function () { return false; });
+  }
+  lock.addEventListener("click", function () {
+    if (locked || pending) { unlockIt(); return; }
+    startSensors().then(function (ok) {
+      if (!ok) {
+        lockmsg.hidden = false;
+        lockmsg.textContent = "Motion sensors are not allowed here. Allow motion access for this site and try again.";
+        return;
+      }
+      if (Rcur) { finalizeLock(); return; }
+      pending = true;
+      lockmsg.hidden = false;
+      lockmsg.textContent = "Reading the motion sensors…";
+      setTimeout(function () {
+        if (pending && !Rcur) {
+          pending = false;
+          lockmsg.textContent = "This phone did not send motion data. Try Chrome on Android or Safari on iPhone.";
+        }
+      }, 2500);
+    });
   });
 })();
 </script>
